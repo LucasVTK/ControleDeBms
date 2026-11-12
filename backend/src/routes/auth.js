@@ -1,19 +1,16 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import rateLimit from 'express-rate-limit';
 import { query } from '../db/pool.js';
 import { authenticate, signToken } from '../middleware/auth.js';
+import { clientIp, enforce } from '../services/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
 
 const router = Router();
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Muitas tentativas de login. Tente novamente em alguns minutos.' },
-});
+// Limites contra força bruta (guardados no banco, valem entre instâncias da Vercel)
+const LOGIN_WINDOW_SEC = 15 * 60;
+const LOGIN_MAX_PER_USER = 10; // tentativas por login a cada 15 min
+const LOGIN_MAX_PER_IP = 40; // tentativas por IP a cada 15 min (vários logins)
 
 // Hash fixo para comparar quando o usuário não existe (evita revelar por tempo de resposta).
 // (pré-calculado para não gastar tempo na inicialização da função serverless)
@@ -25,11 +22,19 @@ function publicUser(u) {
 
 router.post(
   '/login',
-  loginLimiter,
   asyncHandler(async (req, res) => {
-    const username = String(req.body?.username ?? '').trim().toLowerCase();
-    const password = String(req.body?.password ?? '');
+    const rawUser = req.body?.username;
+    const rawPass = req.body?.password;
+    if (typeof rawUser !== 'string' || typeof rawPass !== 'string') {
+      throw new HttpError(400, 'Informe login e senha.');
+    }
+    const username = rawUser.trim().toLowerCase().slice(0, 100);
+    const password = rawPass.slice(0, 200);
     if (!username || !password) throw new HttpError(400, 'Informe login e senha.');
+
+    const tooMany = 'Muitas tentativas de login.';
+    await enforce(res, `login:ip:${clientIp(req)}`, LOGIN_MAX_PER_IP, LOGIN_WINDOW_SEC, tooMany);
+    await enforce(res, `login:user:${username}`, LOGIN_MAX_PER_USER, LOGIN_WINDOW_SEC, tooMany);
 
     const { rows } = await query(
       'SELECT id, name, username, role, active, password_hash FROM users WHERE username = $1',
@@ -40,6 +45,8 @@ router.post(
     if (!user || !ok) throw new HttpError(401, 'Login ou senha incorretos.');
     if (!user.active) throw new HttpError(403, 'Este usuário está desativado. Fale com o administrador.');
 
+    // Login certo zera o contador desse usuário
+    await query('DELETE FROM rate_limits WHERE key = $1', [`login:user:${username}`]);
     res.json({ token: signToken(user), user: publicUser(user) });
   })
 );

@@ -32,14 +32,16 @@ router.get(
 );
 
 function validateName(name) {
-  const n = String(name ?? '').trim();
+  if (typeof name !== 'string') throw new HttpError(400, 'O nome deve ser um texto.');
+  const n = name.trim();
   if (n.length < 2 || n.length > 100) throw new HttpError(400, 'O nome deve ter entre 2 e 100 caracteres.');
   return n;
 }
 
 function validatePassword(password) {
-  const p = String(password ?? '');
-  if (p.length < 6 || p.length > 72) throw new HttpError(400, 'A senha deve ter entre 6 e 72 caracteres.');
+  if (typeof password !== 'string') throw new HttpError(400, 'A senha deve ser um texto.');
+  const p = password;
+  if (p.length < 8 || p.length > 72) throw new HttpError(400, 'A senha deve ter entre 8 e 72 caracteres.');
   return p;
 }
 
@@ -86,7 +88,7 @@ router.patch(
     }
     if (req.body?.password !== undefined) {
       params.push(await bcrypt.hash(validatePassword(req.body.password), BCRYPT_ROUNDS));
-      sets.push(`password_hash = $${params.length}`);
+      sets.push(`password_hash = $${params.length}`, 'password_changed_at = NOW()');
     }
     if (req.body?.active !== undefined) {
       if (typeof req.body.active !== 'boolean') throw new HttpError(400, 'Campo "active" inválido.');

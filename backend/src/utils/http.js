@@ -25,6 +25,7 @@ export function parseNonNegativeInt(value, fieldLabel, max = 1_000_000) {
 
 export function parseId(value) {
   const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) throw new HttpError(400, 'ID inválido.');
+  // Limite do tipo INTEGER do Postgres: acima disso o banco daria erro 500
+  if (!Number.isInteger(n) || n <= 0 || n > 2147483647) throw new HttpError(400, 'ID inválido.');
   return n;
 }

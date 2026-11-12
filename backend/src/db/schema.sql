@@ -70,3 +70,27 @@ DROP TRIGGER IF EXISTS entries_touch_updated_at ON entries;
 CREATE TRIGGER entries_touch_updated_at
   BEFORE UPDATE ON entries
   FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+
+-- Sessões antigas deixam de valer quando a senha é trocada (tokens com iat anterior).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+
+-- Limite de tentativas (login, uploads). Fica no banco porque na Vercel cada
+-- requisição pode cair numa instância diferente (contador em memória não funciona).
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key      TEXT PRIMARY KEY,
+  hits     INTEGER     NOT NULL,
+  reset_at TIMESTAMPTZ NOT NULL
+);
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+
+-- Supabase: além do RLS, tira qualquer permissão dos papéis da API pública
+-- (anon/authenticated) sobre as tabelas e funções do app. No Postgres local
+-- esses papéis não existem, então o bloco não faz nada.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL ON users, entries, payments, rate_limits FROM anon, authenticated;
+    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+    REVOKE EXECUTE ON FUNCTION touch_updated_at() FROM PUBLIC, anon, authenticated;
+  END IF;
+END $$;

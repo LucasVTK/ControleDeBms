@@ -7,7 +7,8 @@ const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/he
 // Mantém em memória: o arquivo vai direto para o Cloudinary, nada fica no disco.
 export const entryPhotosUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: config.maxImageBytes, files: 2, fields: 10 },
+  // fieldSize: texto de cada campo (a descrição tem no máx. 2000 caracteres)
+  limits: { fileSize: config.maxImageBytes, files: 2, fields: 10, parts: 12, fieldSize: 16 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_MIME.has(file.mimetype)) {
       return cb(new HttpError(400, 'Formato de imagem não aceito. Use JPG, PNG, WEBP ou HEIC.'));

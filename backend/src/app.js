@@ -45,7 +45,15 @@ app.use((err, _req, res, _next) => {
   if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
   if (err instanceof multer.MulterError) return res.status(400).json({ error: multerErrorMessage(err) });
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'JSON inválido.' });
-  if (err.code === '23514') return res.status(400).json({ error: 'Dados inválidos.' });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Dados grandes demais.' });
+  // Outros erros de leitura do corpo (encoding inválido, conexão cortada...)
+  if (err.expose && err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({ error: 'Requisição inválida.' });
+  }
+  // Violação de regra do banco (CHECK, tipo, valor fora do limite): erro do cliente, sem detalhes
+  if (['23514', '22P02', '22003', '23502'].includes(err.code)) {
+    return res.status(400).json({ error: 'Dados inválidos.' });
+  }
   console.error(err);
   res.status(500).json({ error: 'Erro interno no servidor.' });
 });

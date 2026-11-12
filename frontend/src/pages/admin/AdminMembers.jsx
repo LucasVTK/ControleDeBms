@@ -59,7 +59,7 @@ export default function AdminMembers() {
               autoComplete="new-password"
               value={form.password}
               onChange={set('password')}
-              minLength={6}
+              minLength={8}
               maxLength={72}
               required
             />
@@ -147,11 +147,11 @@ function MemberRow({ member, onUpdated }) {
         <form className="inline-form" onSubmit={onResetPassword}>
           <input
             type="text"
-            placeholder="Nova senha (mín. 6)"
+            placeholder="Nova senha (mín. 8)"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            minLength={6}
+            minLength={8}
             maxLength={72}
             required
           />

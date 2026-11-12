@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { authenticate, requireAdmin, requireMember } from '../middleware/auth.js';
 import { entryPhotosUpload, looksLikeImage } from '../middleware/upload.js';
+import { enforce } from '../services/rateLimit.js';
 import { acceptsHeic, deleteImage, uploadImage } from '../services/storage.js';
 import { asyncHandler, HttpError, parseId, parseNonNegativeInt } from '../utils/http.js';
 
@@ -84,6 +85,14 @@ router.get(
   })
 );
 
+// Contra abuso do storage: no máx. 30 envios/edições por membro por hora.
+// Roda antes do multer, para nem ler as fotos de quem já estourou o limite.
+const UPLOADS_PER_HOUR = 30;
+const uploadLimit = asyncHandler(async (req, res, next) => {
+  await enforce(res, `upload:user:${req.user.id}`, UPLOADS_PER_HOUR, 3600, 'Limite de envios por hora atingido.');
+  next();
+});
+
 // O membro só pode editar/excluir enquanto o lançamento não foi aprovado
 // (um aprovado já conta para pagamento).
 const MEMBER_EDITABLE = ['PENDENTE', 'REPROVADO'];
@@ -126,6 +135,7 @@ async function uploadAll(files, userId) {
 router.post(
   '/',
   requireMember,
+  uploadLimit,
   entryPhotosUpload,
   asyncHandler(async (req, res) => {
     const before = req.files?.foto_antes?.[0];
@@ -173,6 +183,7 @@ async function findOwnEditable(entryId, userId) {
 router.patch(
   '/:id',
   requireMember,
+  uploadLimit,
   entryPhotosUpload,
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id);
