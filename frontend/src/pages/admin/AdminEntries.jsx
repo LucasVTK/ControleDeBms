@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
-import { useNotifications } from '../../components/Layout.jsx';
+import { useLiveRefresh, useNotifications } from '../../components/Layout.jsx';
 import EntryList from '../../components/EntryList.jsx';
 import { useEntries } from '../../useEntries.js';
 import { useMembers } from '../../useMembers.js';
@@ -12,6 +12,7 @@ export default function AdminEntries() {
   const { members } = useMembers();
   const list = useEntries({ user_id: userId, status });
   const { refresh } = useNotifications();
+  useLiveRefresh(list.refresh);
 
   function setFilter(key, value) {
     const next = new URLSearchParams(params);

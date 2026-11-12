@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, qs } from '../../api.js';
+import { useLiveRefresh } from '../../components/Layout.jsx';
 import { useMembers } from '../../useMembers.js';
 import { formatDateTime } from '../../utils.js';
 
@@ -10,9 +11,12 @@ export default function AdminPayments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [tick, setTick] = useState(0);
+  useLiveRefresh(() => setTick((t) => t + 1));
+
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (tick === 0) setLoading(true); // atualizações automáticas não mostram "Carregando…"
     setError('');
     api(`/payments${qs({ user_id: userId })}`)
       .then((d) => !cancelled && setPayments(d.payments))
@@ -21,7 +25,7 @@ export default function AdminPayments() {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, tick]);
 
   const total = payments.reduce((s, p) => s + p.quantity, 0);
 

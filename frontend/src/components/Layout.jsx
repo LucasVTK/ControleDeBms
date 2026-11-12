@@ -1,41 +1,91 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { homePathFor, useAuth } from '../auth.jsx';
 
-const NotificationsContext = createContext({ count: 0, refresh: () => {}, markRead: () => {} });
+const NotificationsContext = createContext({ count: 0, version: null, refresh: () => {}, markRead: () => {} });
 export const useNotifications = () => useContext(NotificationsContext);
 
-const POLL_MS = 30_000;
+// Intervalo da checagem de mudanças (só enquanto a aba está visível).
+const POLL_MS = 5_000;
+
+/**
+ * Chama fn() sempre que algo mudar no servidor (avaliação, novo lançamento,
+ * pagamento...). Não chama na montagem: a página já carrega seus dados.
+ */
+export function useLiveRefresh(fn) {
+  const { version } = useNotifications();
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  const lastSeen = useRef(version);
+  useEffect(() => {
+    if (!version || version === lastSeen.current) return;
+    const isFirst = lastSeen.current === null;
+    lastSeen.current = version;
+    if (!isFirst) fnRef.current();
+  }, [version]);
+}
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [count, setCount] = useState(0);
+  const [version, setVersion] = useState(null);
+  const [toast, setToast] = useState('');
+  const prevCount = useRef(null);
   const isAdmin = user.role === 'ADMIN';
 
   const refresh = useCallback(() => {
     api('/notifications/count')
-      .then((d) => setCount(d.count))
+      .then((d) => {
+        // Aviso pop-up quando o contador sobe (não na primeira carga)
+        if (prevCount.current !== null && d.count > prevCount.current) {
+          const diff = d.count - prevCount.current;
+          setToast(
+            isAdmin
+              ? diff > 1
+                ? `${diff} novos lançamentos para avaliar`
+                : 'Novo lançamento para avaliar'
+              : diff > 1
+                ? `${diff} lançamentos seus foram avaliados`
+                : 'Um lançamento seu foi avaliado'
+          );
+        }
+        prevCount.current = d.count;
+        setCount(d.count);
+        setVersion(d.version);
+      })
       .catch(() => {});
-  }, []);
+  }, [isAdmin]);
 
   const markRead = useCallback(async () => {
     if (isAdmin) return;
     await api('/notifications/read', { method: 'POST' }).catch(() => {});
+    prevCount.current = 0;
     setCount(0);
-  }, [isAdmin]);
+    refresh();
+  }, [isAdmin, refresh]);
 
   useEffect(() => {
     refresh();
-    const id = setInterval(refresh, POLL_MS);
-    const onFocus = () => document.visibilityState === 'visible' && refresh();
-    document.addEventListener('visibilitychange', onFocus);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') refresh();
+    }, POLL_MS);
+    const onVisible = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
     return () => {
       clearInterval(id);
-      document.removeEventListener('visibilitychange', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(''), 6000);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   function onBellClick() {
     if (isAdmin) {
@@ -51,7 +101,7 @@ export default function Layout() {
     : `${count} lançamento(s) avaliado(s) que você ainda não viu`;
 
   return (
-    <NotificationsContext.Provider value={{ count, refresh, markRead }}>
+    <NotificationsContext.Provider value={{ count, version, refresh, markRead }}>
       <header className="topbar">
         <Link to={homePathFor(user)} className="brand">
           <span className="brand-logo">BM</span>
@@ -83,6 +133,19 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="site-footer">Feito por Lucas Veteka</footer>
+      {toast && (
+        <button
+          className="toast"
+          onClick={() => {
+            setToast('');
+            onBellClick();
+          }}
+        >
+          <span className="toast-dot" />
+          {toast}
+          <span className="toast-link">Ver</span>
+        </button>
+      )}
     </NotificationsContext.Provider>
   );
 }

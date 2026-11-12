@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { api } from '../../api.js';
+import { useLiveRefresh } from '../../components/Layout.jsx';
 import { useMembers } from '../../useMembers.js';
 import { formatDateTime } from '../../utils.js';
 
 export default function AdminMembers() {
-  const { members, setMembers, loading, error, replace } = useMembers();
+  const { members, setMembers, loading, error, replace, reload } = useMembers();
+  useLiveRefresh(reload);
   const [form, setForm] = useState({ name: '', username: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');

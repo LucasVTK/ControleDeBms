@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api.js';
-import { useNotifications } from '../../components/Layout.jsx';
+import { useLiveRefresh, useNotifications } from '../../components/Layout.jsx';
 import StatsCard from '../../components/StatsCard.jsx';
 import EntryList from '../../components/EntryList.jsx';
 import { useEntries } from '../../useEntries.js';
@@ -20,14 +20,11 @@ export default function MemberHome() {
 
   useEffect(loadStats, [loadStats]);
 
-  // Quando chegam novas avaliações, atualiza totais e histórico
-  useEffect(() => {
-    if (count > 0) {
-      loadStats();
-      list.reload();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+  // Atualiza totais e histórico sozinho quando o admin avalia, paga etc.
+  useLiveRefresh(() => {
+    loadStats();
+    list.refresh();
+  });
 
   useEffect(() => {
     if (window.location.hash === '#historico') {
@@ -67,10 +64,7 @@ export default function MemberHome() {
             </span>
             <button
               className="btn btn-sm btn-primary"
-              onClick={async () => {
-                await markRead();
-                list.reload();
-              }}
+              onClick={markRead}
             >
               Marcar como visto
             </button>

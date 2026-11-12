@@ -35,6 +35,24 @@ export function useEntries(filters, pageSize = 20) {
     load(1);
   }, [load]);
 
+  // Atualização em segundo plano: recarrega tudo o que já está na tela, sem "Carregando…".
+  const loadedRef = useRef(0);
+  loadedRef.current = items.length;
+  const refresh = useCallback(async () => {
+    const id = ++reqId.current;
+    const size = Math.min(100, Math.max(pageSize, loadedRef.current));
+    try {
+      const d = await api(`/entries${qs({ ...JSON.parse(key), page: 1, pageSize: size })}`);
+      if (id !== reqId.current) return;
+      setItems(d.items);
+      setTotal(d.total);
+      setPage(Math.max(1, Math.ceil(d.items.length / pageSize)));
+      setLoading(false);
+    } catch {
+      // silencioso: tenta de novo na próxima mudança
+    }
+  }, [key, pageSize]);
+
   const replace = useCallback((entry) => {
     setItems((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
   }, []);
@@ -55,6 +73,7 @@ export function useEntries(filters, pageSize = 20) {
     hasMore: items.length < total,
     loadMore: () => load(page + 1),
     reload: () => load(1),
+    refresh,
     replace,
     remove,
     prepend,

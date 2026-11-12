@@ -1,4 +1,4 @@
-import { useNotifications } from '../../components/Layout.jsx';
+import { useLiveRefresh, useNotifications } from '../../components/Layout.jsx';
 import EntryList from '../../components/EntryList.jsx';
 import { useEntries } from '../../useEntries.js';
 
@@ -6,6 +6,7 @@ import { useEntries } from '../../useEntries.js';
 export default function AdminQueue() {
   const list = useEntries({ status: 'PENDENTE', order: 'asc' });
   const { refresh } = useNotifications();
+  useLiveRefresh(list.refresh);
 
   function onReviewed(entry) {
     list.remove(entry.id);

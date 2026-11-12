@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
+import { useLiveRefresh } from '../../components/Layout.jsx';
 import { ConfirmModal } from '../../components/Modal.jsx';
 import StatsCard from '../../components/StatsCard.jsx';
 import { useMembers } from '../../useMembers.js';
 
 export default function AdminDashboard() {
-  const { members, loading, error, replace } = useMembers();
+  const { members, loading, error, replace, reload } = useMembers();
+  useLiveRefresh(reload);
   const [paying, setPaying] = useState(null);
   const [busy, setBusy] = useState(false);
   const [payError, setPayError] = useState('');

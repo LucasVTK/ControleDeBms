@@ -54,3 +54,19 @@ CREATE INDEX IF NOT EXISTS idx_payments_user ON payments (user_id, created_at DE
 ALTER TABLE users    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entries  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+
+-- Marca de "última alteração" do lançamento: usada pela atualização automática
+-- das telas (o navegador pergunta periodicamente se algo mudou).
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE OR REPLACE FUNCTION touch_updated_at() RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS entries_touch_updated_at ON entries;
+CREATE TRIGGER entries_touch_updated_at
+  BEFORE UPDATE ON entries
+  FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
