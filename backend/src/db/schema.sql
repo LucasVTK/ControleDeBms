@@ -47,3 +47,10 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_payments_user ON payments (user_id, created_at DESC);
+
+-- Supabase expõe o schema public pela API REST (chave anon/publishable).
+-- RLS ligado e sem políticas = ninguém acessa por lá. O backend conecta como
+-- dono das tabelas e não é afetado.
+ALTER TABLE users    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entries  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
