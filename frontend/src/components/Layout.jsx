@@ -7,7 +7,7 @@ const NotificationsContext = createContext({ count: 0, version: null, refresh: (
 export const useNotifications = () => useContext(NotificationsContext);
 
 // Intervalo da checagem de mudanças (só enquanto a aba está visível).
-const POLL_MS = 5_000;
+const POLL_MS = 3_000;
 
 /**
  * Chama fn() sempre que algo mudar no servidor (avaliação, novo lançamento,

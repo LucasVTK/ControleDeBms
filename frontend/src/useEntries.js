@@ -56,7 +56,11 @@ export function useEntries(filters, pageSize = 20) {
   const replace = useCallback((entry) => {
     setItems((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
   }, []);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const remove = useCallback((id) => {
+    if (!itemsRef.current.some((e) => e.id === id)) return; // já removido: não desconta de novo
+    itemsRef.current = itemsRef.current.filter((e) => e.id !== id);
     setItems((prev) => prev.filter((e) => e.id !== id));
     setTotal((t) => Math.max(0, t - 1));
   }, []);

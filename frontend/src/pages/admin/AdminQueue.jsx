@@ -24,7 +24,7 @@ export default function AdminQueue() {
       <EntryList
         list={list}
         emptyText="Nenhum lançamento aguardando avaliação. 🎉"
-        cardProps={{ showMember: true, reviewable: true, onReviewed }}
+        cardProps={{ showMember: true, reviewable: true, onReviewed, onReviewFailed: list.refresh }}
       />
     </section>
   );

@@ -25,6 +25,12 @@ if (useLocalStorage) {
   app.use('/uploads', express.static(LOCAL_UPLOAD_DIR, { maxAge: '7d' }));
 }
 
+// Respostas da API nunca devem vir de cache (as telas se atualizam sozinhas)
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

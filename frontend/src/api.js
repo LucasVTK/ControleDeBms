@@ -1,10 +1,37 @@
 const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const TOKEN_KEY = 'bm_token';
 
+/**
+ * Cada aba guarda o próprio login (sessionStorage), assim dá para ter o admin
+ * numa aba e um membro em outra no mesmo navegador. O localStorage guarda o
+ * último login, para uma aba nova (ou o app reaberto no celular) já entrar logada.
+ */
 export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (t) => localStorage.setItem(TOKEN_KEY, t),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  get: () => {
+    try {
+      return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  },
+  set: (t) => {
+    try {
+      sessionStorage.setItem(TOKEN_KEY, t);
+      localStorage.setItem(TOKEN_KEY, t);
+    } catch {
+      /* armazenamento bloqueado: segue só na memória da página */
+    }
+  },
+  clear: () => {
+    try {
+      const mine = sessionStorage.getItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      // só apaga o "último login" se ele for desta aba
+      if (!mine || localStorage.getItem(TOKEN_KEY) === mine) localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      /* ignore */
+    }
+  },
 };
 
 /**

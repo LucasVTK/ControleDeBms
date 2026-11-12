@@ -54,7 +54,7 @@ export default function AdminEntries() {
       <EntryList
         list={list}
         emptyText="Nenhum lançamento encontrado com esses filtros."
-        cardProps={{ showMember: true, reviewable: true, onReviewed }}
+        cardProps={{ showMember: true, reviewable: true, onReviewed, onReviewFailed: list.refresh }}
       />
     </section>
   );

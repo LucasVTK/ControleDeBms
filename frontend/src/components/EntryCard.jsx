@@ -12,7 +12,7 @@ import NewEntryForm from '../pages/member/NewEntryForm.jsx';
  * - highlightNew: marca "Novo" quando o membro ainda não viu a avaliação
  * - editable: membro pode editar/excluir (só pendente ou reprovado)
  */
-export default function EntryCard({ entry, showMember, reviewable, highlightNew, editable, onReviewed, onUpdated, onDeleted }) {
+export default function EntryCard({ entry, showMember, reviewable, highlightNew, editable, onReviewed, onReviewFailed, onUpdated, onDeleted }) {
   const [zoom, setZoom] = useState(null);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -87,7 +87,7 @@ export default function EntryCard({ entry, showMember, reviewable, highlightNew,
         </div>
       )}
 
-      {reviewable && <ReviewPanel entry={entry} onReviewed={onReviewed} />}
+      {reviewable && <ReviewPanel entry={entry} onReviewed={onReviewed} onReviewFailed={onReviewFailed} />}
 
       {canChange && (
         <div className="entry-actions">
@@ -140,7 +140,7 @@ export default function EntryCard({ entry, showMember, reviewable, highlightNew,
   );
 }
 
-function ReviewPanel({ entry, onReviewed }) {
+function ReviewPanel({ entry, onReviewed, onReviewFailed }) {
   const isPending = entry.status === 'PENDENTE';
   const [open, setOpen] = useState(isPending);
   const [comment, setComment] = useState(isPending ? '' : entry.admin_comment || '');
@@ -154,15 +154,27 @@ function ReviewPanel({ entry, onReviewed }) {
       return;
     }
     setBusy(true);
+    // Atualiza a tela na hora (sem esperar o servidor); se der erro, desfaz.
+    const optimistic = {
+      ...entry,
+      status,
+      admin_comment: comment.trim() || null,
+      reviewed_at: new Date().toISOString(),
+      member_seen: false,
+    };
+    onReviewed?.(optimistic);
+    setOpen(false);
     try {
       const d = await api(`/entries/${entry.id}/review`, {
         method: 'PATCH',
         body: { status, comment },
       });
       onReviewed?.(d.entry);
-      setOpen(false);
     } catch (err) {
+      onReviewFailed?.(entry);
+      setOpen(true);
       setError(err.message);
+      window.alert(`Não foi possível salvar a avaliação: ${err.message}`);
     } finally {
       setBusy(false);
     }
