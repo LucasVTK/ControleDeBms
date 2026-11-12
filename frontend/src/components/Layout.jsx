@@ -55,7 +55,10 @@ export default function Layout() {
       <header className="topbar">
         <Link to={homePathFor(user)} className="brand">
           <span className="brand-logo">BM</span>
-          <span className="brand-text">Produção</span>
+          <span className="brand-stack">
+            <span className="brand-text">Produção</span>
+            <span className="brand-credit">por Lucas Veteka</span>
+          </span>
         </Link>
         <div className="topbar-right">
           <button className="bell" onClick={onBellClick} title={bellTitle} aria-label={bellTitle}>
@@ -79,6 +82,7 @@ export default function Layout() {
       <main className="container">
         <Outlet />
       </main>
+      <footer className="site-footer">Feito por Lucas Veteka</footer>
     </NotificationsContext.Provider>
   );
 }

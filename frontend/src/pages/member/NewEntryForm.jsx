@@ -4,7 +4,7 @@ import { compressImage } from '../../utils.js';
 
 const MAX_TOTAL_BYTES = 4 * 1024 * 1024;
 
-function PhotoInput({ label, file, onChange }) {
+function PhotoInput({ label, file, currentUrl, required, onChange }) {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState(null);
 
@@ -15,12 +15,17 @@ function PhotoInput({ label, file, onChange }) {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  const shown = preview || currentUrl;
+
   return (
     <div className="photo-input">
-      <span className="photo-input-label">{label} *</span>
+      <span className="photo-input-label">
+        {label}
+        {required ? ' *' : ''}
+      </span>
       <button type="button" className={`photo-drop ${file ? 'has-file' : ''}`} onClick={() => inputRef.current?.click()}>
-        {preview ? (
-          <img src={preview} alt={`Prévia ${label}`} />
+        {shown ? (
+          <img src={shown} alt={`Prévia ${label}`} />
         ) : (
           <span>
             <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
@@ -34,6 +39,7 @@ function PhotoInput({ label, file, onChange }) {
           </span>
         )}
       </button>
+      {currentUrl && <span className="photo-input-hint">{file ? 'Nova foto selecionada' : 'Toque para trocar'}</span>}
       <input
         ref={inputRef}
         type="file"
@@ -48,12 +54,18 @@ function PhotoInput({ label, file, onChange }) {
   );
 }
 
-export default function NewEntryForm({ onCreated }) {
+/**
+ * Formulário de lançamento.
+ * - Sem `entry`: cria um novo (fotos obrigatórias).
+ * - Com `entry`: edita (fotos opcionais; só troca as que forem escolhidas).
+ */
+export default function NewEntryForm({ entry, onCreated, onSaved, onCancel }) {
+  const editing = Boolean(entry);
   const [before, setBefore] = useState(null);
   const [after, setAfter] = useState(null);
-  const [qtyDone, setQtyDone] = useState('');
-  const [qtyBanned, setQtyBanned] = useState('');
-  const [description, setDescription] = useState('');
+  const [qtyDone, setQtyDone] = useState(editing ? String(entry.qty_done) : '');
+  const [qtyBanned, setQtyBanned] = useState(editing ? String(entry.qty_banned) : '');
+  const [description, setDescription] = useState(editing ? entry.description || '' : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -64,30 +76,42 @@ export default function NewEntryForm({ onCreated }) {
     e.preventDefault();
     setError('');
     setSuccess('');
-    if (!before || !after) return setError('Envie as duas fotos: ANTES e DEPOIS.');
+    if (!editing && (!before || !after)) return setError('Envie as duas fotos: ANTES e DEPOIS.');
     if (!isInt(qtyDone) || !isInt(qtyBanned)) {
       return setError('As quantidades devem ser números inteiros (0 ou mais).');
     }
 
     setBusy(true);
     try {
-      // A hospedagem aceita no máx. ~4,5 MB por envio: comprime mais até as duas fotos caberem.
-      let b, a;
+      // A hospedagem aceita no máx. ~4,5 MB por envio: comprime mais até as fotos caberem.
+      let b = null;
+      let a = null;
+      const total = () => (b?.size || 0) + (a?.size || 0);
       for (const [dim, quality] of [[1920, 0.85], [1600, 0.75], [1280, 0.65]]) {
-        [b, a] = await Promise.all([compressImage(before, dim, quality), compressImage(after, dim, quality)]);
-        if (b.size + a.size <= MAX_TOTAL_BYTES) break;
+        [b, a] = await Promise.all([
+          before && compressImage(before, dim, quality),
+          after && compressImage(after, dim, quality),
+        ]);
+        if (total() <= MAX_TOTAL_BYTES) break;
       }
-      if (b.size + a.size > MAX_TOTAL_BYTES) {
+      if (total() > MAX_TOTAL_BYTES) {
         throw new Error('As fotos são grandes demais. Tente tirar as fotos em resolução menor ou em JPG.');
       }
+
       const form = new FormData();
-      form.append('foto_antes', b);
-      form.append('foto_depois', a);
+      if (b) form.append('foto_antes', b);
+      if (a) form.append('foto_depois', a);
       form.append('qty_done', String(qtyDone).trim());
       form.append('qty_banned', String(qtyBanned).trim());
       form.append('description', description);
-      const d = await api('/entries', { method: 'POST', form });
 
+      if (editing) {
+        const d = await api(`/entries/${entry.id}`, { method: 'PATCH', form });
+        onSaved?.(d.entry);
+        return;
+      }
+
+      const d = await api('/entries', { method: 'POST', form });
       setBefore(null);
       setAfter(null);
       setQtyDone('');
@@ -102,19 +126,24 @@ export default function NewEntryForm({ onCreated }) {
     }
   }
 
+  const idp = editing ? `e${entry.id}-` : '';
+
   return (
-    <form className="card" onSubmit={onSubmit}>
-      <h2>Novo lançamento</h2>
+    <form className={editing ? '' : 'card'} onSubmit={onSubmit}>
+      <h2>{editing ? 'Editar lançamento' : 'Novo lançamento'}</h2>
+      {editing && entry.status === 'REPROVADO' && (
+        <p className="notice-small">Ao salvar, o lançamento volta para <strong>pendente</strong> e o admin avalia de novo.</p>
+      )}
       <div className="photo-inputs">
-        <PhotoInput label="ANTES" file={before} onChange={setBefore} />
-        <PhotoInput label="DEPOIS" file={after} onChange={setAfter} />
+        <PhotoInput label="ANTES" file={before} currentUrl={entry?.before_url} required={!editing} onChange={setBefore} />
+        <PhotoInput label="DEPOIS" file={after} currentUrl={entry?.after_url} required={!editing} onChange={setAfter} />
       </div>
 
       <div className="grid-2">
         <div>
-          <label htmlFor="qtyDone">Quantidade feita *</label>
+          <label htmlFor={`${idp}qtyDone`}>Quantidade feita *</label>
           <input
-            id="qtyDone"
+            id={`${idp}qtyDone`}
             type="number"
             inputMode="numeric"
             min="0"
@@ -125,9 +154,9 @@ export default function NewEntryForm({ onCreated }) {
           />
         </div>
         <div>
-          <label htmlFor="qtyBanned">Quantidade banida *</label>
+          <label htmlFor={`${idp}qtyBanned`}>Quantidade banida *</label>
           <input
-            id="qtyBanned"
+            id={`${idp}qtyBanned`}
             type="number"
             inputMode="numeric"
             min="0"
@@ -139,9 +168,9 @@ export default function NewEntryForm({ onCreated }) {
         </div>
       </div>
 
-      <label htmlFor="description">Descrição / observação</label>
+      <label htmlFor={`${idp}description`}>Descrição / observação</label>
       <textarea
-        id="description"
+        id={`${idp}description`}
         rows={3}
         maxLength={2000}
         placeholder="Opcional"
@@ -151,9 +180,20 @@ export default function NewEntryForm({ onCreated }) {
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
-      <button className="btn btn-primary btn-block" disabled={busy}>
-        {busy ? 'Enviando fotos…' : 'Enviar lançamento'}
-      </button>
+      {editing ? (
+        <div className="modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={busy}>
+            Cancelar
+          </button>
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? 'Salvando…' : 'Salvar alterações'}
+          </button>
+        </div>
+      ) : (
+        <button className="btn btn-primary btn-block" disabled={busy}>
+          {busy ? 'Enviando fotos…' : 'Enviar lançamento'}
+        </button>
+      )}
     </form>
   );
 }

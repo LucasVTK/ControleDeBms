@@ -31,6 +31,7 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      <span className="login-credit">por Lucas Veteka</span>
       <form className="card login-card" onSubmit={onSubmit}>
         <div className="login-brand">
           <span className="brand-logo brand-logo-lg">BM</span>
@@ -61,6 +62,7 @@ export default function Login() {
           {busy ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
+      <footer className="site-footer">Feito por Lucas Veteka</footer>
     </div>
   );
 }

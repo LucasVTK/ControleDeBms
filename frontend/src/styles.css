@@ -902,3 +902,70 @@ textarea {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ---------- Editar / excluir lançamento ---------- */
+.entry-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.entry-actions .btn {
+  flex: 1;
+}
+.modal-wide {
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+.photo-input-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+}
+.notice-small {
+  margin: -0.25rem 0 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: var(--yellow-bg);
+  color: var(--yellow-fg);
+  font-size: 0.85rem;
+}
+
+/* ---------- Créditos ---------- */
+.brand-stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.brand-credit {
+  font-size: 0.65rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.site-footer {
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.login-page {
+  position: relative;
+}
+.login-credit {
+  position: absolute;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: 1rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+.login-page .site-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  color: rgba(255, 255, 255, 0.6);
+}

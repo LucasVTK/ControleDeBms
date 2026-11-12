@@ -64,6 +64,8 @@ Todas as rotas, exceto o login, exigem `Authorization: Bearer <token>`.
 | GET | `/api/entries` | logado | Membro: só os próprios. Admin: todos. Filtros `?user_id=&status=&page=&pageSize=&order=asc` |
 | GET | `/api/entries/:id` | dono/admin | Um lançamento |
 | POST | `/api/entries` | membro | multipart: `foto_antes`, `foto_depois`, `qty_done`, `qty_banned`, `description` |
+| PATCH | `/api/entries/:id` | membro (dono) | Edita lançamento **pendente ou reprovado** (fotos opcionais). Volta para PENDENTE |
+| DELETE | `/api/entries/:id` | membro (dono) | Exclui lançamento **pendente ou reprovado** (apaga as fotos) |
 | PATCH | `/api/entries/:id/review` | admin | `{ status: APROVADO\|REPROVADO, comment }` (comentário obrigatório ao reprovar) |
 | GET | `/api/payments` | admin | Histórico de quitações (`?user_id=`) |
 | POST | `/api/payments` | admin | `{ user_id }` → quita todos os pendentes |

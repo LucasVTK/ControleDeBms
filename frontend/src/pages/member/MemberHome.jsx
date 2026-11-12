@@ -76,7 +76,24 @@ export default function MemberHome() {
             </button>
           </div>
         )}
-        <EntryList list={list} emptyText="Nenhum lançamento ainda." cardProps={{ highlightNew: true }} />
+        <EntryList
+          list={list}
+          emptyText="Nenhum lançamento ainda."
+          cardProps={{
+            highlightNew: true,
+            editable: true,
+            onUpdated: (entry) => {
+              // Ao editar um reprovado ele volta para pendente: some do filtro "Reprovados"
+              if (status && entry.status !== status) list.remove(entry.id);
+              else list.replace(entry);
+              loadStats();
+            },
+            onDeleted: (id) => {
+              list.remove(id);
+              loadStats();
+            },
+          }}
+        />
       </section>
     </div>
   );

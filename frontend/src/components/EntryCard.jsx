@@ -2,16 +2,37 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { formatDateTime } from '../utils.js';
 import StatusBadge from './StatusBadge.jsx';
-import { ImageModal } from './Modal.jsx';
+import Modal, { ConfirmModal, ImageModal } from './Modal.jsx';
+import NewEntryForm from '../pages/member/NewEntryForm.jsx';
 
 /**
  * Card de lançamento: fotos lado a lado, números, descrição e feedback.
  * - showMember: mostra o nome do membro (visão do admin)
  * - reviewable: mostra o painel de aprovar/reprovar (só admin)
  * - highlightNew: marca "Novo" quando o membro ainda não viu a avaliação
+ * - editable: membro pode editar/excluir (só pendente ou reprovado)
  */
-export default function EntryCard({ entry, showMember, reviewable, highlightNew, onReviewed }) {
+export default function EntryCard({ entry, showMember, reviewable, highlightNew, editable, onReviewed, onUpdated, onDeleted }) {
   const [zoom, setZoom] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const canChange = editable && entry.status !== 'APROVADO';
+
+  async function confirmDelete() {
+    setBusy(true);
+    setActionError('');
+    try {
+      await api(`/entries/${entry.id}`, { method: 'DELETE' });
+      setDeleting(false);
+      onDeleted?.(entry.id);
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const isNew = highlightNew && !entry.member_seen && entry.status !== 'PENDENTE';
 
   return (
@@ -67,6 +88,52 @@ export default function EntryCard({ entry, showMember, reviewable, highlightNew,
       )}
 
       {reviewable && <ReviewPanel entry={entry} onReviewed={onReviewed} />}
+
+      {canChange && (
+        <div className="entry-actions">
+          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+            Editar
+          </button>
+          <button
+            className="btn btn-danger-ghost btn-sm"
+            onClick={() => {
+              setActionError('');
+              setDeleting(true);
+            }}
+          >
+            Excluir
+          </button>
+        </div>
+      )}
+
+      {editing && (
+        <Modal onClose={() => setEditing(false)} className="modal-wide">
+          <NewEntryForm
+            entry={entry}
+            onCancel={() => setEditing(false)}
+            onSaved={(updated) => {
+              setEditing(false);
+              onUpdated?.(updated);
+            }}
+          />
+        </Modal>
+      )}
+
+      {deleting && (
+        <ConfirmModal
+          title="Excluir lançamento"
+          confirmLabel="Sim, excluir"
+          busy={busy}
+          onCancel={() => setDeleting(false)}
+          onConfirm={confirmDelete}
+        >
+          <p>
+            Excluir o lançamento de <strong>{formatDateTime(entry.created_at)}</strong> ({entry.qty_done} feitas)?
+          </p>
+          <p className="muted">As fotos também serão apagadas. Não dá para desfazer.</p>
+          {actionError && <p className="error">{actionError}</p>}
+        </ConfirmModal>
+      )}
 
       {zoom && <ImageModal src={zoom.src} alt={zoom.alt} onClose={() => setZoom(null)} />}
     </article>
