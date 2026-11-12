@@ -31,10 +31,11 @@ export function requireRuntimeConfig() {
   if (config.jwtSecret.length < 16) {
     throw new Error('[config] JWT_SECRET precisa ter pelo menos 16 caracteres.');
   }
-  // Em produção (Vercel) não há disco persistente: Cloudinary é obrigatório.
-  if (isVercel) {
-    required('CLOUDINARY_CLOUD_NAME');
-    required('CLOUDINARY_API_KEY');
-    required('CLOUDINARY_API_SECRET');
+  // Em produção (Vercel) não há disco persistente: precisa de um storage externo.
+  const hasSupabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY;
+  const hasCloudinary =
+    process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+  if (isVercel && !hasSupabase && !hasCloudinary) {
+    throw new Error('[config] Configure SUPABASE_URL e SUPABASE_SERVICE_KEY para guardar as fotos.');
   }
 }

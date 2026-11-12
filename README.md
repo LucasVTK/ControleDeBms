@@ -2,7 +2,7 @@
 
 App web para controlar a produção da equipe: lançamentos com fotos antes e depois, aprovação pelo admin e contagem de pagamentos (1 a cada 20 feitas aprovadas).
 
-- [`backend/`](backend/README.md): API Node.js + Express + PostgreSQL + Cloudinary
+- [`backend/`](backend/README.md): API Node.js + Express + PostgreSQL (Supabase) + fotos no Supabase Storage
 - [`frontend/`](frontend/README.md): React + Vite
 - `api/index.js` + `vercel.json` + `package.json` (raiz): publicação na Vercel
 
@@ -23,9 +23,9 @@ npm install
 npm run dev                 # abre em http://localhost:5173
 ```
 
-Sem as chaves do Cloudinary no `.env`, as fotos ficam salvas em `backend/uploads` (modo teste).
+Sem `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` no `.env`, as fotos ficam salvas em `backend/uploads` (modo teste).
 
-## Produção: Vercel + Supabase + Cloudinary
+## Produção: Vercel + Supabase (banco e fotos)
 
 Front e API ficam no **mesmo projeto da Vercel**, com um único link. As telas são servidas como site estático (`frontend/dist`) e toda chamada a `/api/*` cai na função serverless `api/index.js`, que usa o mesmo Express do `backend/`.
 
@@ -59,9 +59,9 @@ node --env-file=.env.production src/db/seed.js
 
 Os membros reais você cadastra pela tela **Membros**, depois de entrar como admin.
 
-### 3. Cloudinary (fotos)
+### 3. Fotos (Supabase Storage)
 
-Crie uma conta grátis em cloudinary.com. No **Dashboard**, copie *Cloud name*, *API Key* e *API Secret*.
+O `npm run migrate` cria o bucket público `fotos`. Pegue a chave em **Project Settings → API Keys → Secret keys** (`sb_secret_...`). Nunca use a chave *publishable*/*anon* aqui.
 
 ### 4. Vercel
 
@@ -74,14 +74,14 @@ Crie uma conta grátis em cloudinary.com. No **Dashboard**, copie *Cloud name*, 
 | `DATABASE_URL` | string do **Transaction pooler** (porta 6543) |
 | `DATABASE_SSL` | `true` |
 | `JWT_SECRET` | string aleatória longa (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
-| `CLOUDINARY_CLOUD_NAME` | do Cloudinary |
-| `CLOUDINARY_API_KEY` | do Cloudinary |
-| `CLOUDINARY_API_SECRET` | do Cloudinary |
+| `SUPABASE_URL` | `https://SEU-PROJETO.supabase.co` |
+| `SUPABASE_SERVICE_KEY` | a *Secret key* (`sb_secret_...`) |
 
 4. Clique em **Deploy**. A cada `git push`, a Vercel publica de novo sozinha.
 
 ### Limites da Vercel que o app já trata
 
 - **Upload:** a Vercel aceita no máximo 4,5 MB por envio. O app reduz as fotos no celular até as duas juntas ficarem abaixo de 4 MB.
-- **Fotos:** na Vercel não há disco permanente, então lá o Cloudinary é obrigatório. Se faltar alguma chave, a API não sobe e o erro aparece nos logs da Vercel.
+- **Fotos:** na Vercel não há disco permanente, então lá o Supabase Storage é obrigatório (o Cloudinary continua aceito como alternativa). Se faltar a chave, a API não sobe e o erro aparece nos logs da Vercel.
+- **HEIC:** sem Cloudinary, fotos HEIC não são aceitas. Na prática quase nunca chegam, porque o app converte para JPG no celular antes de enviar.
 - **Banco:** a API roda em funções serverless e usa o pooler do Supabase (porta 6543), com poucas conexões por instância.

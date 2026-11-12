@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { authenticate, requireAdmin, requireMember } from '../middleware/auth.js';
 import { entryPhotosUpload, looksLikeImage } from '../middleware/upload.js';
-import { deleteImage, uploadImage } from '../services/storage.js';
+import { acceptsHeic, deleteImage, uploadImage } from '../services/storage.js';
 import { asyncHandler, HttpError, parseId, parseNonNegativeInt } from '../utils/http.js';
 
 const router = Router();
@@ -96,6 +96,13 @@ router.post(
     if (!after) throw new HttpError(400, 'A foto "DEPOIS" é obrigatória.');
     if (!looksLikeImage(before.buffer)) throw new HttpError(400, 'A foto "ANTES" não é uma imagem válida.');
     if (!looksLikeImage(after.buffer)) throw new HttpError(400, 'A foto "DEPOIS" não é uma imagem válida.');
+    const isHeic = (buf) => buf.toString('ascii', 4, 8) === 'ftyp';
+    if (!acceptsHeic && (isHeic(before.buffer) || isHeic(after.buffer))) {
+      throw new HttpError(
+        400,
+        'Foto em formato HEIC não é aceita. No iPhone: Ajustes → Câmera → Formatos → "Mais compatível".'
+      );
+    }
 
     const qtyDone = parseNonNegativeInt(req.body.qty_done, 'Quantidade feita');
     const qtyBanned = parseNonNegativeInt(req.body.qty_banned, 'Quantidade banida');

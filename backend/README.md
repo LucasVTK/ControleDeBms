@@ -1,12 +1,12 @@
 # Backend — Controle de Produção BM
 
-API REST em Node.js + Express + PostgreSQL. Fotos vão para o Cloudinary; no banco fica só a URL.
+API REST em Node.js + Express + PostgreSQL. As fotos vão para o Supabase Storage (ou Cloudinary, como alternativa); no banco fica só a URL.
 
 ## Requisitos
 
 - Node.js 18 ou superior
 - PostgreSQL (local ou na nuvem: Supabase, Neon, Render...)
-- Conta no [Cloudinary](https://cloudinary.com) (o plano grátis serve)
+- Para as fotos em produção: Supabase Storage (mesma conta do banco). Sem storage configurado, as fotos ficam em `backend/uploads` (modo teste).
 
 ## Como rodar
 
@@ -32,8 +32,9 @@ O `seed:membros` mostra as senhas geradas **uma única vez** no terminal. Anote 
 | `JWT_SECRET` | String longa e aleatória (mín. 16 caracteres). Gere com `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`. |
 | `JWT_EXPIRES_IN` | Validade do login (padrão `7d`). |
 | `CORS_ORIGIN` | URL(s) do front-end, separadas por vírgula. |
-| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | Do painel do Cloudinary. |
-| `CLOUDINARY_FOLDER` | Pasta onde as fotos ficam (padrão `bm-producao`). |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Projeto do Supabase e a *Secret key* (`sb_secret_...`), para guardar as fotos. |
+| `SUPABASE_BUCKET` | Bucket das fotos (padrão `fotos`, público). |
+| `CLOUDINARY_*` | Opcional: alternativa ao Supabase Storage. |
 | `MAX_IMAGE_MB` | Tamanho máximo por foto (padrão 10). |
 | `ADMIN_NAME` / `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Usados só pelo `npm run seed`. |
 
@@ -72,8 +73,8 @@ Todas as rotas, exceto o login, exigem `Authorization: Bearer <token>`.
 ## Validações no servidor
 
 - Quantidades: inteiros de 0 a 1.000.000.
-- Fotos: as duas são obrigatórias. Aceita JPG, PNG, WEBP e HEIC, até `MAX_IMAGE_MB`. O servidor confere a assinatura binária do arquivo, não só a extensão. As fotos são convertidas para JPG no Cloudinary.
-- Se o upload de uma foto falhar ou o banco recusar o lançamento, as fotos já enviadas são apagadas do Cloudinary.
+- Fotos: as duas são obrigatórias. Aceita JPG, PNG e WEBP (HEIC só com Cloudinary), até `MAX_IMAGE_MB`. O servidor confere a assinatura binária do arquivo, não só a extensão.
+- Se o upload de uma foto falhar ou o banco recusar o lançamento, as fotos já enviadas são apagadas do storage.
 - Senhas guardadas com hash bcrypt (12 rounds). O login tem limite de 20 tentativas a cada 15 minutos por IP.
 
 ## Produção
