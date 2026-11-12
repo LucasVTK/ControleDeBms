@@ -1017,3 +1017,18 @@ textarea {
 .entry {
   transition: border-color 0.3s, box-shadow 0.3s;
 }
+
+/* Conta do Facebook no card do lançamento */
+.entry-fb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.92rem;
+  color: #1e40af;
+  word-break: break-word;
+}
+.entry-fb svg {
+  flex: 0 0 auto;
+  color: #1877f2;
+}

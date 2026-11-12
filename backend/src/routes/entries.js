@@ -14,7 +14,7 @@ router.use(authenticate);
 
 const ENTRY_COLUMNS = `
   e.id, e.user_id, u.name AS user_name, e.before_url, e.after_url,
-  e.qty_done, e.qty_banned, e.description, e.status, e.admin_comment,
+  e.qty_done, e.qty_banned, e.fb_account, e.description, e.status, e.admin_comment,
   e.reviewed_at, r.name AS reviewed_by_name, e.member_seen, e.created_at
 `;
 const ENTRY_FROM = `
@@ -114,7 +114,15 @@ function parseEntryFields(body) {
   if (description.length > MAX_TEXT) {
     throw new HttpError(400, `A descrição pode ter no máximo ${MAX_TEXT} caracteres.`);
   }
-  return { qtyDone, qtyBanned, description: description || null };
+  if (typeof body.fb_account !== 'string' || !body.fb_account.trim()) {
+    throw new HttpError(400, 'Informe o nome da conta do Facebook utilizada.');
+  }
+  // Junta espaços repetidos e remove caracteres de controle
+  const fbAccount = body.fb_account.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+  if (!fbAccount || fbAccount.length > 100) {
+    throw new HttpError(400, 'O nome da conta do Facebook deve ter entre 1 e 100 caracteres.');
+  }
+  return { qtyDone, qtyBanned, fbAccount, description: description || null };
 }
 
 /** Sobe várias fotos; se alguma falhar, apaga as que subiram e lança erro. */
@@ -144,15 +152,15 @@ router.post(
     if (!after) throw new HttpError(400, 'A foto "DEPOIS" é obrigatória.');
     validatePhoto(before, 'ANTES');
     validatePhoto(after, 'DEPOIS');
-    const { qtyDone, qtyBanned, description } = parseEntryFields(req.body);
+    const { qtyDone, qtyBanned, fbAccount, description } = parseEntryFields(req.body);
 
     const [beforeImg, afterImg] = await uploadAll([before, after], req.user.id);
     try {
       const { rows } = await query(
         `INSERT INTO entries
-           (user_id, before_url, before_public_id, after_url, after_public_id, qty_done, qty_banned, description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [req.user.id, beforeImg.url, beforeImg.publicId, afterImg.url, afterImg.publicId, qtyDone, qtyBanned, description]
+           (user_id, before_url, before_public_id, after_url, after_public_id, qty_done, qty_banned, description, fb_account)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [req.user.id, beforeImg.url, beforeImg.publicId, afterImg.url, afterImg.publicId, qtyDone, qtyBanned, description, fbAccount]
       );
       res.status(201).json({ entry: await fetchEntry(rows[0].id) });
     } catch (err) {
@@ -192,7 +200,7 @@ router.patch(
     const after = req.files?.foto_depois?.[0];
     if (before) validatePhoto(before, 'ANTES');
     if (after) validatePhoto(after, 'DEPOIS');
-    const { qtyDone, qtyBanned, description } = parseEntryFields(req.body);
+    const { qtyDone, qtyBanned, fbAccount, description } = parseEntryFields(req.body);
 
     const newFiles = [before, after].filter(Boolean);
     const uploaded = newFiles.length ? await uploadAll(newFiles, req.user.id) : [];
@@ -204,7 +212,7 @@ router.patch(
       // A condição de status no WHERE evita sobrescrever se o admin aprovou neste meio-tempo.
       ({ rowCount } = await query(
         `UPDATE entries
-            SET qty_done = $1, qty_banned = $2, description = $3,
+            SET qty_done = $1, qty_banned = $2, description = $3, fb_account = $11,
                 before_url = COALESCE($4, before_url), before_public_id = COALESCE($5, before_public_id),
                 after_url  = COALESCE($6, after_url),  after_public_id  = COALESCE($7, after_public_id),
                 status = 'PENDENTE', admin_comment = NULL, reviewed_by = NULL, reviewed_at = NULL,
@@ -214,7 +222,7 @@ router.patch(
           qtyDone, qtyBanned, description,
           beforeImg?.url ?? null, beforeImg?.publicId ?? null,
           afterImg?.url ?? null, afterImg?.publicId ?? null,
-          id, req.user.id, MEMBER_EDITABLE,
+          id, req.user.id, MEMBER_EDITABLE, fbAccount,
         ]
       ));
     } catch (err) {

@@ -94,3 +94,6 @@ BEGIN
     REVOKE EXECUTE ON FUNCTION touch_updated_at() FROM PUBLIC, anon, authenticated;
   END IF;
 END $$;
+
+-- Nome da conta do Facebook usada na operação (obrigatório em lançamentos novos)
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS fb_account VARCHAR(100);

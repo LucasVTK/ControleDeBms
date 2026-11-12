@@ -66,6 +66,7 @@ export default function NewEntryForm({ entry, onCreated, onSaved, onCancel }) {
   const [qtyDone, setQtyDone] = useState(editing ? String(entry.qty_done) : '');
   const [qtyBanned, setQtyBanned] = useState(editing ? String(entry.qty_banned) : '');
   const [description, setDescription] = useState(editing ? entry.description || '' : '');
+  const [fbAccount, setFbAccount] = useState(editing ? entry.fb_account || '' : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -77,6 +78,7 @@ export default function NewEntryForm({ entry, onCreated, onSaved, onCancel }) {
     setError('');
     setSuccess('');
     if (!editing && (!before || !after)) return setError('Envie as duas fotos: ANTES e DEPOIS.');
+    if (!fbAccount.trim()) return setError('Informe o nome da conta do Facebook utilizada.');
     if (!isInt(qtyDone) || !isInt(qtyBanned)) {
       return setError('As quantidades devem ser números inteiros (0 ou mais).');
     }
@@ -101,6 +103,7 @@ export default function NewEntryForm({ entry, onCreated, onSaved, onCancel }) {
       const form = new FormData();
       if (b) form.append('foto_antes', b);
       if (a) form.append('foto_depois', a);
+      form.append('fb_account', fbAccount.trim());
       form.append('qty_done', String(qtyDone).trim());
       form.append('qty_banned', String(qtyBanned).trim());
       form.append('description', description);
@@ -117,6 +120,7 @@ export default function NewEntryForm({ entry, onCreated, onSaved, onCancel }) {
       setQtyDone('');
       setQtyBanned('');
       setDescription('');
+      // A conta do Facebook fica preenchida: normalmente o membro usa a mesma várias vezes
       setSuccess('Lançamento enviado! Aguarde a avaliação do admin.');
       onCreated?.(d.entry);
     } catch (err) {
@@ -138,6 +142,19 @@ export default function NewEntryForm({ entry, onCreated, onSaved, onCancel }) {
         <PhotoInput label="ANTES" file={before} currentUrl={entry?.before_url} required={!editing} onChange={setBefore} />
         <PhotoInput label="DEPOIS" file={after} currentUrl={entry?.after_url} required={!editing} onChange={setAfter} />
       </div>
+
+      <label htmlFor={`${idp}fbAccount`}>Conta do Facebook utilizada *</label>
+      <input
+        id={`${idp}fbAccount`}
+        type="text"
+        maxLength={100}
+        autoComplete="off"
+        autoCapitalize="words"
+        placeholder="Nome da conta usada nesta operação"
+        value={fbAccount}
+        onChange={(e) => setFbAccount(e.target.value)}
+        required
+      />
 
       <div className="grid-2">
         <div>
