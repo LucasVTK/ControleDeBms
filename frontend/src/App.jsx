@@ -10,6 +10,11 @@ import AdminQueue from './pages/admin/AdminQueue.jsx';
 import AdminEntries from './pages/admin/AdminEntries.jsx';
 import AdminPayments from './pages/admin/AdminPayments.jsx';
 import AdminMembers from './pages/admin/AdminMembers.jsx';
+import OwnerLayout from './pages/owner/OwnerLayout.jsx';
+import OwnerLive from './pages/owner/OwnerLive.jsx';
+import OwnerActivity from './pages/owner/OwnerActivity.jsx';
+import OwnerAccounts from './pages/owner/OwnerAccounts.jsx';
+import OwnerSecurity from './pages/owner/OwnerSecurity.jsx';
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
@@ -39,7 +44,7 @@ export default function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute role="ADMIN">
+            <ProtectedRoute role={['ADMIN', 'DONO']}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -49,6 +54,19 @@ export default function App() {
           <Route path="lancamentos" element={<AdminEntries />} />
           <Route path="pagamentos" element={<AdminPayments />} />
           <Route path="membros" element={<AdminMembers />} />
+        </Route>
+        <Route
+          path="/dono"
+          element={
+            <ProtectedRoute role="DONO">
+              <OwnerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<OwnerLive />} />
+          <Route path="atividade" element={<OwnerActivity />} />
+          <Route path="contas" element={<OwnerAccounts />} />
+          <Route path="seguranca" element={<OwnerSecurity />} />
         </Route>
       </Route>
       <Route path="*" element={<HomeRedirect />} />

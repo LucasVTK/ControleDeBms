@@ -33,8 +33,9 @@ export async function authenticate(req, _res, next) {
     }
 
     const { rows } = await query(
-      `SELECT id, name, username, role, active,
-              FLOOR(EXTRACT(EPOCH FROM password_changed_at))::bigint AS pwd_changed
+      `SELECT id, name, username, role, active, blocked_actions,
+              FLOOR(EXTRACT(EPOCH FROM password_changed_at))::bigint AS pwd_changed,
+              CEIL(EXTRACT(EPOCH FROM sessions_revoked_at))::bigint AS revoked
          FROM users WHERE id = $1`,
       [userId]
     );
@@ -44,7 +45,12 @@ export async function authenticate(req, _res, next) {
     if (user.pwd_changed && Number(payload.iat) < Number(user.pwd_changed)) {
       throw new HttpError(401, 'Sua senha foi alterada. Faça login novamente.');
     }
+    // O dono derrubou as sessões desta conta
+    if (user.revoked && Number(payload.iat) < Number(user.revoked)) {
+      throw new HttpError(401, 'Sua sessão foi encerrada. Faça login novamente.');
+    }
     delete user.pwd_changed;
+    delete user.revoked;
 
     req.user = user;
     next();
@@ -62,5 +68,20 @@ export function requireRole(...roles) {
   };
 }
 
-export const requireAdmin = requireRole('ADMIN');
+// O dono também tem todos os poderes de admin
+export const requireAdmin = requireRole('ADMIN', 'DONO');
 export const requireMember = requireRole('MEMBRO');
+export const requireOwner = requireRole('DONO');
+
+// Ações que o dono pode proibir conta a conta
+export const BLOCKABLE_ACTIONS = ['LANCAR', 'AVALIAR', 'PAGAR', 'MEMBROS'];
+
+/** Barra a ação se o dono a bloqueou para esta conta. */
+export function requireAllowed(action) {
+  return (req, _res, next) => {
+    if (req.user?.blocked_actions?.includes(action)) {
+      return next(new HttpError(403, 'Esta ação foi bloqueada na sua conta. Fale com o responsável.'));
+    }
+    next();
+  };
+}

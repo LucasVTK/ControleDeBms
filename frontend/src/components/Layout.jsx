@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { homePathFor, useAuth } from '../auth.jsx';
 
@@ -33,10 +33,15 @@ export default function Layout() {
   const [version, setVersion] = useState(null);
   const [toast, setToast] = useState('');
   const prevCount = useRef(null);
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role !== 'MEMBRO';
+  const isOwner = user.role === 'DONO';
+  // Tela atual vai junto na checagem periódica (presença na visão do dono)
+  const location = useLocation();
+  const pathRef = useRef(location.pathname);
+  pathRef.current = location.pathname;
 
   const refresh = useCallback(() => {
-    api('/notifications/count')
+    api(`/notifications/count?tela=${encodeURIComponent(pathRef.current)}`)
       .then((d) => {
         // Aviso pop-up quando o contador sobe (não na primeira carga)
         if (prevCount.current !== null && d.count > prevCount.current) {
@@ -122,7 +127,7 @@ export default function Layout() {
           </button>
           <span className="user-name" title={user.username}>
             {user.name}
-            {isAdmin && <small className="role-tag">admin</small>}
+            {isAdmin && <small className="role-tag">{isOwner ? 'dono' : 'admin'}</small>}
           </span>
           <button className="btn btn-ghost btn-sm" onClick={logout}>
             Sair

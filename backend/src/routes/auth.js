@@ -42,11 +42,20 @@ router.post(
     );
     const user = rows[0];
     const ok = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
-    if (!user || !ok) throw new HttpError(401, 'Login ou senha incorretos.');
+    if (user) res.locals.activityUserId = user.id; // o registro mostra de quem é a conta tentada
+    if (!user || !ok) {
+      if (user) res.locals.activity = { motivo: 'senha errada' };
+      throw new HttpError(401, 'Login ou senha incorretos.');
+    }
     if (!user.active) throw new HttpError(403, 'Este usuário está desativado. Fale com o administrador.');
 
     // Login certo zera o contador desse usuário
     await query('DELETE FROM rate_limits WHERE key = $1', [`login:user:${username}`]);
+    await query(
+      `UPDATE users SET last_login_at = NOW(), last_seen_at = NOW(), last_path = NULL, last_ip = $2, last_user_agent = $3
+        WHERE id = $1`,
+      [user.id, clientIp(req), String(req.headers['user-agent'] || '').slice(0, 300) || null]
+    );
     res.json({ token: signToken(user), user: publicUser(user) });
   })
 );

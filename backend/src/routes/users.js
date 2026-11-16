@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db/pool.js';
-import { authenticate, requireAdmin, requireMember } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireAllowed, requireMember } from '../middleware/auth.js';
 import { asyncHandler, HttpError, parseId } from '../utils/http.js';
 import { getMemberWithStats, listMembersWithStats } from '../services/stats.js';
 
@@ -31,14 +31,14 @@ router.get(
   })
 );
 
-function validateName(name) {
+export function validateName(name) {
   if (typeof name !== 'string') throw new HttpError(400, 'O nome deve ser um texto.');
   const n = name.trim();
   if (n.length < 2 || n.length > 100) throw new HttpError(400, 'O nome deve ter entre 2 e 100 caracteres.');
   return n;
 }
 
-function validatePassword(password) {
+export function validatePassword(password) {
   if (typeof password !== 'string') throw new HttpError(400, 'A senha deve ser um texto.');
   const p = password;
   if (p.length < 8 || p.length > 72) throw new HttpError(400, 'A senha deve ter entre 8 e 72 caracteres.');
@@ -48,6 +48,7 @@ function validatePassword(password) {
 router.post(
   '/',
   requireAdmin,
+  requireAllowed('MEMBROS'),
   asyncHandler(async (req, res) => {
     const name = validateName(req.body?.name);
     const username = String(req.body?.username ?? '').trim().toLowerCase();
@@ -75,6 +76,7 @@ router.post(
 router.patch(
   '/:id',
   requireAdmin,
+  requireAllowed('MEMBROS'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id);
     const { rows } = await query("SELECT id FROM users WHERE id = $1 AND role = 'MEMBRO'", [id]);

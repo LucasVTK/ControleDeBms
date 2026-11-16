@@ -28,16 +28,20 @@ export function AuthProvider({ children }) {
     return d.user;
   }, []);
 
+  // Troca o token desta aba (ex.: depois de o dono trocar a própria senha)
+  const replaceToken = useCallback((token) => tokenStore.set(token), []);
+
   const logout = useCallback(() => {
     tokenStore.clear();
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, logout, replaceToken }}>{children}</AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
 
-export const homePathFor = (user) => (user?.role === 'ADMIN' ? '/admin' : '/membro');
+const HOME_BY_ROLE = { DONO: '/dono', ADMIN: '/admin', MEMBRO: '/membro' };
+export const homePathFor = (user) => HOME_BY_ROLE[user?.role] || '/membro';

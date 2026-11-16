@@ -97,3 +97,58 @@ END $$;
 
 -- Nome da conta do Facebook usada na operação (obrigatório em lançamentos novos)
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS fb_account VARCHAR(100);
+
+-- ===== Visão do dono (dono do sistema / programador) =====
+
+-- Papel DONO: vê tudo, monitora e bloqueia. Tem também os poderes de admin.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('DONO', 'ADMIN', 'MEMBRO'));
+
+-- Presença (quem está online e em qual tela), último login e bloqueios por conta
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at        TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_path           VARCHAR(80);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at       TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip             VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_user_agent     VARCHAR(300);
+-- Sessões emitidas antes deste momento deixam de valer ("derrubar sessões")
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sessions_revoked_at TIMESTAMPTZ;
+-- Ações proibidas para a conta: LANCAR, AVALIAR, PAGAR, MEMBROS
+ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_actions     TEXT[] NOT NULL DEFAULT '{}';
+
+-- Registro de atividade: tudo que muda algo, toda tentativa que falhou e as telas abertas
+CREATE TABLE IF NOT EXISTS activity_log (
+  id         BIGSERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  user_id    INTEGER      REFERENCES users(id) ON DELETE SET NULL,
+  action     VARCHAR(40)  NOT NULL,
+  method     VARCHAR(10),
+  path       VARCHAR(200),
+  status     SMALLINT,
+  ip         VARCHAR(64),
+  user_agent VARCHAR(300),
+  details    JSONB
+);
+CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log (user_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_fail ON activity_log (id DESC) WHERE status >= 400;
+CREATE INDEX IF NOT EXISTS idx_activity_ip ON activity_log (ip, id DESC);
+
+-- IPs impedidos de usar o site
+CREATE TABLE IF NOT EXISTS blocked_ips (
+  ip          VARCHAR(64) PRIMARY KEY,
+  reason      VARCHAR(200),
+  created_by  INTEGER     REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  hits        INTEGER     NOT NULL DEFAULT 0,
+  last_hit_at TIMESTAMPTZ
+);
+
+ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocked_ips  ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL ON activity_log, blocked_ips FROM anon, authenticated;
+    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+  END IF;
+END $$;

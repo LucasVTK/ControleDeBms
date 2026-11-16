@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
-import { authenticate, requireAdmin, requireMember } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireAllowed, requireMember } from '../middleware/auth.js';
 import { entryPhotosUpload, looksLikeImage } from '../middleware/upload.js';
 import { enforce } from '../services/rateLimit.js';
 import { acceptsHeic, deleteImage, uploadImage } from '../services/storage.js';
@@ -143,6 +143,7 @@ async function uploadAll(files, userId) {
 router.post(
   '/',
   requireMember,
+  requireAllowed('LANCAR'),
   uploadLimit,
   entryPhotosUpload,
   asyncHandler(async (req, res) => {
@@ -191,6 +192,7 @@ async function findOwnEditable(entryId, userId) {
 router.patch(
   '/:id',
   requireMember,
+  requireAllowed('LANCAR'),
   uploadLimit,
   entryPhotosUpload,
   asyncHandler(async (req, res) => {
@@ -247,6 +249,7 @@ router.patch(
 router.delete(
   '/:id',
   requireMember,
+  requireAllowed('LANCAR'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id);
     await findOwnEditable(id, req.user.id);
@@ -265,6 +268,7 @@ router.delete(
 router.patch(
   '/:id/review',
   requireAdmin,
+  requireAllowed('AVALIAR'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id);
     const status = String(req.body?.status ?? '').toUpperCase();

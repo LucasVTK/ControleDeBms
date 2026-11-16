@@ -41,5 +41,6 @@ export async function enforce(res, key, limit, windowSec, message) {
  */
 export function clientIp(req) {
   const ip = isVercel ? req.headers['x-real-ip'] || req.ip : req.socket?.remoteAddress || req.ip;
-  return String(ip || 'desconhecido').slice(0, 64);
+  // IPv4 que chega como IPv6 ("::ffff:1.2.3.4") vira o IPv4 normal
+  return String(ip || 'desconhecido').replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/, '').slice(0, 64);
 }

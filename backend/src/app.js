@@ -11,6 +11,8 @@ import userRoutes from './routes/users.js';
 import entryRoutes from './routes/entries.js';
 import paymentRoutes from './routes/payments.js';
 import notificationRoutes from './routes/notifications.js';
+import ownerRoutes from './routes/owner.js';
+import { activityLogger, blockIps } from './services/activity.js';
 
 requireRuntimeConfig();
 
@@ -31,12 +33,16 @@ app.use('/api', (_req, res, next) => {
   next();
 });
 
+// IP bloqueado pelo dono para aqui; o resto passa pelo registro de atividade
+app.use('/api', blockIps, activityLogger);
+
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/entries', entryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/owner', ownerRoutes);
 
 app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Rota não encontrada.')));
 

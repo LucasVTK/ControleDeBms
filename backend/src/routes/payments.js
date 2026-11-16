@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireAllowed } from '../middleware/auth.js';
 import { getMemberWithStats } from '../services/stats.js';
 import { asyncHandler, HttpError, parseId } from '../utils/http.js';
 
@@ -37,6 +37,7 @@ router.get(
  */
 router.post(
   '/',
+  requireAllowed('PAGAR'),
   asyncHandler(async (req, res) => {
     const userId = parseId(req.body?.user_id);
 

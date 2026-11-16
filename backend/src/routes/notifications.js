@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { authenticate, requireMember } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/http.js';
+import { writeActivity } from '../services/activity.js';
+import { clientIp } from '../services/rateLimit.js';
 
 const router = Router();
 router.use(authenticate);
@@ -12,9 +14,39 @@ router.use(authenticate);
  * - version: "carimbo" que muda sempre que algo relevante muda. O front só
  *   recarrega listas e totais quando o carimbo muda.
  */
+const PATH_RE = /^\/[a-z0-9/_-]{0,79}$/;
+
+/**
+ * Presença: quem está online e em qual tela. Grava no máx. a cada 30s, ou
+ * na hora quando a pessoa troca de tela (e aí registra a tela na atividade).
+ */
+async function heartbeat(req) {
+  const tela = typeof req.query.tela === 'string' && PATH_RE.test(req.query.tela) ? req.query.tela : null;
+  const ip = clientIp(req);
+  const { rows } = await query(
+    `WITH old AS (SELECT last_path FROM users WHERE id = $1)
+     UPDATE users SET last_seen_at = NOW(), last_ip = $3, last_path = COALESCE($2, last_path)
+      WHERE id = $1
+        AND (last_seen_at IS NULL OR last_seen_at < NOW() - INTERVAL '30 seconds'
+             OR ($2::text IS NOT NULL AND last_path IS DISTINCT FROM $2))
+     RETURNING (SELECT last_path FROM old) AS prev`,
+    [req.user.id, tela, ip]
+  );
+  if (rows[0] && tela && rows[0].prev !== tela) {
+    await writeActivity({
+      userId: req.user.id,
+      action: 'tela',
+      ip,
+      userAgent: req.headers['user-agent'] || null,
+      details: { tela },
+    });
+  }
+}
+
 router.get(
   '/count',
   asyncHandler(async (req, res) => {
+    await heartbeat(req).catch((err) => console.error('[presença]', err.message));
     if (req.user.role === 'MEMBRO') {
       const { rows } = await query(
         `SELECT

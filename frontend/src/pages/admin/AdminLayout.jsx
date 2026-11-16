@@ -1,14 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useNotifications } from '../../components/Layout.jsx';
+import { useAuth } from '../../auth.jsx';
 
 export default function AdminLayout() {
   const { count } = useNotifications();
+  const { user } = useAuth();
   const tabs = [
     { to: '/admin', label: 'Painel', end: true },
     { to: '/admin/fila', label: 'Fila', badge: count },
     { to: '/admin/lancamentos', label: 'Lançamentos' },
     { to: '/admin/pagamentos', label: 'Pagamentos' },
     { to: '/admin/membros', label: 'Membros' },
+    ...(user.role === 'DONO' ? [{ to: '/dono', label: '★ Visão do dono', end: true }] : []),
   ];
   return (
     <div>

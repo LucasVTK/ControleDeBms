@@ -1032,3 +1032,148 @@ textarea {
   flex: 0 0 auto;
   color: #1877f2;
 }
+
+/* ===== Visão do dono ===== */
+.owner .stats {
+  margin-bottom: 0.5rem;
+}
+.stat-btn {
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stat-btn:hover {
+  outline: 2px solid var(--border);
+}
+.stat-alert {
+  background: var(--red-bg);
+  color: var(--red-fg);
+}
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  text-align: left;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.text-fail {
+  color: var(--red-fg);
+}
+.row-fail td {
+  background: #fff7f7;
+}
+.row-screen td {
+  color: var(--muted);
+}
+.status-chip {
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  border-radius: 6px;
+  background: var(--red-bg);
+  color: var(--red-fg);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.role-chip {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.02rem 0.4rem;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+  background: var(--bg);
+  color: var(--muted);
+}
+.role-dono {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.role-admin {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.activity-table td {
+  vertical-align: top;
+}
+.show-sm {
+  display: none;
+}
+.online-list {
+  display: grid;
+  gap: 0.6rem;
+}
+.online-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.online-item > div {
+  flex: 1;
+  min-width: 0;
+}
+.online-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin: 0.4rem 0.4rem 0 0;
+  border-radius: 50%;
+  background: var(--green-bd);
+  box-shadow: 0 0 0 3px var(--green-bg);
+}
+.block-panel {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.block-panel .btn {
+  justify-self: start;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+}
+.check input {
+  width: auto;
+}
+.owner .member-row .badge {
+  margin-left: 0.35rem;
+}
+@media (max-width: 480px) {
+  .show-sm {
+    display: block;
+  }
+}
+@media (min-width: 720px) {
+  .owner .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.owner .stat {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.owner .stat-highlight {
+  background: var(--green-bg);
+}
+.owner .stat-alert {
+  background: var(--red-bg);
+}
+.stat-alert .stat-label {
+  color: var(--red-fg);
+}
